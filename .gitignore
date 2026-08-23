@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/
+.pybuild/
+wheels/
+sdist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Runtime / example output
+*.log
+tree.dot
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+.pyright/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs build
+site/
+docs/_build/
+
+# Local assistant workspace — notes, transcripts, session docs. Not shared.
+.claude/
+CLAUDE.md

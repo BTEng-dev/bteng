@@ -1,0 +1,14 @@
+# Source distribution contents.
+# The wheel is defined by [tool.setuptools] in pyproject.toml; this file only adds
+# the extras that make an sdist self-contained.
+
+include README.md
+include LICENSE
+include pyproject.toml
+include setup.cfg
+recursive-include bteng      *.py
+recursive-include bteng/licenses *.md
+recursive-include tests      *.py
+recursive-include examples   *.py *.xml
+
+global-exclude __pycache__ *.py[cod]

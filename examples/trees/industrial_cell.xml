@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Example 02 — a pick-and-place work cell.
+
+  The guard sits in a ReactiveSequence, so it is re-evaluated on every tick and
+  a running motion is halted the moment the e-stop trips. A plain Sequence
+  would check it once and then ignore it for the rest of the cycle.
+-->
+<BTEng format_version="1.0" main_tree_to_execute="production_cycle">
+
+  <Tree ID="production_cycle">
+    <ReactiveSequence name="production cycle">
+
+      <!-- re-checked every tick -->
+      <Condition ID="EStopClear" name="EStopClear"/>
+
+      <Sequence name="cycle">
+
+        <!-- the gripper misses often; give it three goes -->
+        <Retry num_attempts="3" name="pick with retries">
+          <Action ID="MachineMove" name="PickPart"
+                  label="closing gripper on part" icon="🦾" fail_rate="0.4"/>
+        </Retry>
+
+        <!-- never let a traverse block the line forever -->
+        <Timeout duration="4.0" name="move must finish in 4s">
+          <Action ID="MachineMove" name="MoveToPallet"
+                  label="traversing to pallet" icon="🚚"
+                  min_s="0.4" max_s="0.9"/>
+        </Timeout>
+
+        <!-- if the release fails, jog the axis and try once more -->
+        <Fallback name="place">
+          <Action ID="MachineMove" name="PlacePart"
+                  label="releasing part" icon="🫳" fail_rate="0.3"/>
+          <Sequence name="recover">
+            <Action ID="MachineMove" name="JogAxis"
+                    label="jogging axis clear" icon="🔧"/>
+            <Action ID="MachineMove" name="PlaceAgain"
+                    label="releasing part (2nd try)" icon="🫳"/>
+          </Sequence>
+        </Fallback>
+
+        <Action ID="CountPart" name="IncrementCounter"/>
+
+      </Sequence>
+    </ReactiveSequence>
+  </Tree>
+
+</BTEng>

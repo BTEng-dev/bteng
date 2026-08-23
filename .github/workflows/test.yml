@@ -1,0 +1,39 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: py${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false          # report every failing version, not just the first
+      matrix:
+        python: ["3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest tests/ -q
+
+      - name: Run the examples
+        run: |
+          python examples/01_creature_comfort.py
+          python examples/02_industrial_cell.py
+
+      - name: Build and check the package
+        run: |
+          python -m build
+          python -m twine check dist/*

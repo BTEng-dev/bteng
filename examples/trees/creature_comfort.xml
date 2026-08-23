@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Example 01 — keeping a creature comfortable.
+
+  A Fallback succeeds as soon as one child succeeds, so each pair reads as
+  "is the need already met?  if not, do something about it".
+-->
+<BTEng format_version="1.0" main_tree_to_execute="stay_comfortable">
+
+  <Tree ID="stay_comfortable">
+    <Sequence name="stay comfortable">
+
+      <Fallback name="not hungry">
+        <Condition ID="NeedIsMet"   name="IsFull" need="is_full"/>
+        <Action    ID="SatisfyNeed" name="Eat"    need="is_full"
+                   label="eating" icon="🍎"/>
+      </Fallback>
+
+      <Fallback name="not freezing">
+        <Condition ID="NeedIsMet"   name="IsWarm" need="is_warm"/>
+        <Action    ID="SatisfyNeed" name="WarmUp" need="is_warm"
+                   label="warming up" icon="🔥"/>
+      </Fallback>
+
+    </Sequence>
+  </Tree>
+
+</BTEng>

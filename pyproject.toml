@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bteng"
+version = "0.3.2"
+description = "Modular Behavior Tree execution engine for Python"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = []
+authors = [
+  { name = "BTEng contributors" }
+]
+keywords = ["behavior-tree", "robotics", "automation", "planning", "control"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage      = "https://github.com/BTEng-dev/bteng"
+"Bug Tracker" = "https://github.com/BTEng-dev/bteng/issues"
+
+[project.optional-dependencies]
+zmq  = ["pyzmq>=26"]   # >=26: first release where pyzmq is fully BSD-3-Clause (was LGPL+BSD)
+dev  = ["build", "pytest", "twine"]
+
+[project.scripts]
+bteng = "bteng.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+bteng = ["licenses/THIRD_PARTY_LICENSES.md"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bteng*"]

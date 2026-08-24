@@ -31,12 +31,13 @@ executor.tick_until_result()
 
 # Per-node stats
 for uid, stats in inspector.all_stats().items():
+    avg = stats.total_duration / stats.tick_count if stats.tick_count else 0.0
     print(f"{uid:30s}  ticks={stats.tick_count:4d}  "
           f"total={stats.total_duration:.4f}s  "
-          f"avg={stats.avg_duration:.6f}s")
+          f"avg={avg:.6f}s")
 
-# Active nodes at the last tick
-print("Active nodes:", inspector.active_nodes())
+# Currently RUNNING nodes
+print("Running nodes:", inspector.running_nodes())
 
 # Full path from root to deepest running node
 print("Active path:", inspector.active_path())
@@ -47,19 +48,24 @@ print("Active path:", inspector.active_path())
 | Field | Type | Meaning |
 |-------|------|---------|
 | `tick_count` | `int` | Total number of times this node was ticked |
+| `success_count` | `int` | Ticks that returned SUCCESS |
+| `failure_count` | `int` | Ticks that returned FAILURE |
 | `total_duration` | `float` | Sum of all tick durations in seconds |
-| `avg_duration` | `float` | `total_duration / tick_count` |
-| `last_status` | `NodeStatus` | Status returned on the last tick |
-| `last_tick_time` | `float` | Unix timestamp of the last tick |
+| `min_duration` | `float` | Fastest tick, in seconds |
+| `max_duration` | `float` | Slowest tick, in seconds |
 
-### Inspector.explain()
+There is no `avg_duration` field — divide `total_duration` by `tick_count`, guarding
+against a node that was never ticked. For the last status and tick time, read
+`node.status` and `node.last_tick_time` on the node itself.
 
-`explain()` returns a human-readable execution trace entry for each node transition,
-useful for post-run analysis:
+### Inspector.explanations()
+
+`explanations()` returns an `ExplainEntry` for each recorded node event, useful for
+post-run analysis:
 
 ```python
-for entry in inspector.explain():
-    print(entry.node_name, entry.transition, entry.timestamp)
+for entry in inspector.explanations():
+    print(entry.node_name, entry.event, entry.reason, entry.timestamp)
 ```
 
 ---
@@ -94,9 +100,9 @@ executor.tick_until_result()
 ### Log sinks
 
 ```python
-logger.add_console_sink(colored=True)           # pretty-print to stdout
-logger.add_json_file_sink("run.log")                 # write to a file
-logger.add_sink(lambda entry: ...)              # custom callable sink
+logger.add_console_sink(colored=True)      # pretty-print to stdout
+logger.add_json_file_sink("run.log")       # write newline-delimited JSON to a file
+logger.add_custom_sink(lambda entry: ...)  # any callable taking a LogEntry
 ```
 
 ### LogEntry fields
@@ -106,7 +112,10 @@ logger.add_sink(lambda entry: ...)              # custom callable sink
 | `timestamp` | `float` | Unix timestamp |
 | `node_name` | `str` | Node's name |
 | `node_uid` | `str` | Node's unique ID |
-| `status` | `NodeStatus` | Status at this transition |
+| `old_status` | `NodeStatus` | Status before the transition |
+| `new_status` | `NodeStatus` | Status after the transition |
+| `duration` | `float` | How long the tick took, in seconds |
+| `reason` | `str` | Why the transition happened, when the node supplied one |
 | `level` | `LogLevel` | Severity level |
 | `message` | `str` | Human-readable description |
 
@@ -114,9 +123,10 @@ logger.add_sink(lambda entry: ...)              # custom callable sink
 
 ## ExecutionTracer
 
-`ExecutionTracer` records a `TraceFrame` at the end of every tick. Each frame is a
-snapshot of every node's status at that point in time. Use it for replay, regression
-comparisons, and debugging non-deterministic failures.
+`ExecutionTracer` records a `TraceFrame` at the end of every tick — including ticks
+that changed nothing on the blackboard. Each frame holds the execution records of the
+nodes that ran, plus a blackboard snapshot when the tick changed one. Use it for
+replay, regression comparisons, and debugging non-deterministic failures.
 
 ```python
 from bteng import ExecutionTracer, TreeExecutor
@@ -128,11 +138,11 @@ executor.set_tree(tree)
 executor.set_tracer(tracer)
 executor.tick_until_result()
 
-# Inspect frames
-for i, frame in enumerate(tracer.frames):
-    print(f"Tick {i}:")
-    for uid, status in frame.node_statuses.items():
-        print(f"  {uid}: {status}")
+# Inspect frames -- frames() is a method, not a property
+for frame in tracer.frames():
+    print(f"Tick {frame.tick_index}:")
+    for record in frame.node_records:
+        print(f"  {record.uid}: {record.old_status.value} -> {record.status.value}")
 ```
 
 ### TraceFrame fields
@@ -140,9 +150,12 @@ for i, frame in enumerate(tracer.frames):
 | Field | Type | Meaning |
 |-------|------|---------|
 | `tick_index` | `int` | Zero-based tick number |
-| `timestamp` | `float` | Unix timestamp at end of tick |
-| `node_statuses` | `dict[str, NodeStatus]` | Status of every node at this tick |
-| `root_status` | `NodeStatus` | Status returned by the root node |
+| `timestamp` | `float` | `time.monotonic()` when the frame opened |
+| `node_records` | `list[NodeExecutionRecord]` | One record per node that executed in this tick |
+| `blackboard_snapshot` | `dict[str, str]` | Blackboard contents, present only when the tick changed them |
+
+Each `NodeExecutionRecord` carries `uid`, `name`, `node_type`, `old_status`,
+`status`, `duration`, `tick_time`, `feedback_message` and `halt_reason`.
 
 ### Legacy transition events
 
@@ -176,9 +189,10 @@ executor.set_tracer(tracer)
 executor.tick_until_result()
 
 # Post-run analysis
-print("Ticks:", len(tracer.frames))
+print("Ticks:", tracer.frame_count())
 for uid, stats in inspector.all_stats().items():
-    print(uid, stats.tick_count, f"{stats.avg_duration*1000:.2f}ms")
+    avg = stats.total_duration / stats.tick_count if stats.tick_count else 0.0
+    print(uid, stats.tick_count, f"{avg*1000:.2f}ms")
 ```
 
 ---

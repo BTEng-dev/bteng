@@ -47,7 +47,11 @@ for record in inspector.execution_history(max_entries=100):
 | `status` | `NodeStatus` | Status after this tick |
 | `tick_time` | `float` | `time.monotonic()` timestamp |
 | `duration` | `float` | Wall-clock tick duration (seconds) |
-| `failure_reason` | `str` | Set via `node.set_failure_reason()` |
+| `feedback_message` | `str` | Set via `node.set_feedback_message()` |
+| `halt_reason` | `str` | Why the node was halted, when it was |
+
+There is no `failure_reason` on the record — that lives on the node itself
+(`node.failure_reason`, set via `node.set_failure_reason()`).
 
 ### Custom subscribers
 

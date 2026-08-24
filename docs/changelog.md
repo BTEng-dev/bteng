@@ -16,16 +16,19 @@ defining module, and `!!!` admonitions became GitHub alert blockquotes.
 
 ### Licensing is documented in the package
 
-`bteng/licenses/` ships two reports as package data, so they are readable from an
-installed copy without visiting GitHub:
+`bteng/licenses/THIRD_PARTY_LICENSES.md` ships as package data, so the audit is
+readable from an installed copy without visiting GitHub:
 
 ```bash
-bteng licenses                 # third-party audit
-bteng licenses alternatives    # open-source alternatives survey
-bteng licenses --path          # location on disk
+bteng licenses           # print the third-party audit
+bteng licenses --path    # print its location on disk instead
 ```
 
-Both carry the date their facts were verified from primary sources.
+It carries the date its facts were verified from primary sources.
+
+The open-source alternatives survey is a planning document, not a licence
+record, so it is **not** packaged. It lives in the repository only, at
+[docs/license/OPEN_SOURCE_ALTERNATIVES.md](license/OPEN_SOURCE_ALTERNATIVES.md).
 
 ### Clearer names on the mock nodes
 

@@ -361,9 +361,18 @@ class TreeExecutor:
         self._tick_count += 1
 
         if self._tracer is not None:
+            # end_frame() is what commits the frame opened above, so it must run on
+            # every tick. Calling it only when the blackboard was dirty silently
+            # dropped every frame of a tree that never writes to the blackboard --
+            # and left the tracer with an open frame that the next begin_frame()
+            # overwrote, discarding its node records too. A clean tick is a real
+            # frame; it just carries no snapshot.
             bb_snapshot = self._tree.blackboard.take_snapshot_if_dirty()
-            if bb_snapshot is not None:
-                self._tracer.end_frame({k: str(v) for k, v in bb_snapshot.items()})
+            self._tracer.end_frame(
+                {k: str(v) for k, v in bb_snapshot.items()}
+                if bb_snapshot is not None
+                else None
+            )
 
         return status
 

@@ -1038,3 +1038,65 @@ class TestP12TickMustReturnNodeStatus:
             node = MockActionNode("n")
             node.set_status(status)
             assert node.execute_tick() == status
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tracer frames were dropped for trees that never wrote to the blackboard
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestTracerRecordsEveryTick:
+    """`begin_frame()` ran every tick but `end_frame()` only ran when the
+    blackboard was dirty, and `end_frame()` is what commits the frame. A tree
+    whose nodes never wrote to the blackboard therefore traced nothing at all:
+    `frames()` stayed empty, and each tick's node records were discarded when
+    the next `begin_frame()` replaced the still-open frame.
+
+    Every existing tracer test drove `begin_frame`/`end_frame` by hand, so the
+    executor's own path was never exercised and the suite stayed green.
+    """
+
+    @staticmethod
+    def _run(node_cls, ticks=5):
+        bb = Blackboard(scope_name="tracer_frames")
+        cfg = NodeConfig(blackboard=bb)
+        root = SequenceNode("root", children=[node_cls("leaf", cfg)], config=cfg)
+        ex = TreeExecutor(ExecutorConfig(enable_tracing=False, enable_logging=False))
+        ex.set_tree(Tree(TreeMetadata(id="t"), root, blackboard=bb))
+        tracer = ExecutionTracer()
+        ex.set_tracer(tracer)
+        for _ in range(ticks):
+            ex.tick_once()
+        ex.shutdown()
+        return tracer
+
+    def test_frame_per_tick_when_blackboard_is_never_written(self):
+        class _Pure(ActionNode):
+            def tick(self):
+                return NodeStatus.SUCCESS
+
+        tracer = self._run(_Pure)
+        assert tracer.frame_count() == 5
+        assert [f.tick_index for f in tracer.frames()] == [0, 1, 2, 3, 4]
+
+    def test_frame_per_tick_when_blackboard_is_written(self):
+        class _Writer(ActionNode):
+            def __init__(self, name, config=None):
+                super().__init__(name, config)
+                self.n = 0
+
+            def tick(self):
+                self.n += 1
+                self.blackboard.set("k", self.n)
+                return NodeStatus.SUCCESS
+
+        tracer = self._run(_Writer)
+        assert tracer.frame_count() == 5
+
+    def test_clean_tick_frame_has_an_empty_snapshot_not_a_missing_frame(self):
+        class _Pure(ActionNode):
+            def tick(self):
+                return NodeStatus.SUCCESS
+
+        tracer = self._run(_Pure, ticks=1)
+        assert tracer.frame_count() == 1
+        assert tracer.frames()[0].blackboard_snapshot == {}

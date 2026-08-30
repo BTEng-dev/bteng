@@ -202,3 +202,39 @@ def test_xml_ref_reaches_the_node_and_validates():
 
     assert root.config.input_ports == {"num_attempts": "tries"}
     assert root._budget() == 2
+
+
+_PARALLEL_XML = """
+<BTEng>
+  <Tree ID="main">
+    <Parallel name="par" success_threshold="{wanted}" failure_threshold="{tolerated}">
+      <MockAction name="a"/>
+      <MockAction name="b"/>
+    </Parallel>
+  </Tree>
+</BTEng>
+"""
+
+
+def test_xml_parallel_thresholds_bind_and_validate():
+    """Both thresholds must be *declared* ports, or Tree.validate() rejects the tree.
+
+    The parser binds any {ref} attribute as an input port, and validate_node()
+    rejects a mapping to an undeclared port -- so a failure_threshold that only
+    _failure_from_port() knew about parsed and ticked correctly, then failed
+    validation the moment the tree was wrapped in a Tree.
+    """
+    factory = NodeFactory()
+    factory.register(MockActionNode, "MockAction")
+    bb = Blackboard(scope_name="xml_par_bb")
+    bb.set("wanted", 2)
+    bb.set("tolerated", 1)
+
+    root = XMLTreeParser(factory=factory).parse_string(_PARALLEL_XML, blackboard=bb)
+    Tree(TreeMetadata(id="t"), root).validate()
+
+    assert root.config.input_ports == {
+        "success_threshold": "wanted",
+        "failure_threshold": "tolerated",
+    }
+    assert root._effective_thresholds() == (2, 1)

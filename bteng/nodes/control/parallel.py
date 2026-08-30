@@ -95,8 +95,9 @@ class ParallelNode(ControlNode):
         success_threshold is a declared input port, so it may be remapped to a
         blackboard key via NodeConfig(input_ports=...).  Reading it here is what
         makes that mapping take effect; previously the port was decorative and
-        only the constructor argument counted.  XML cannot reach this path --
-        parser._control_kwargs needs an int at build time and rejects a {ref}.
+        only the constructor argument counted.  XML reaches this path too:
+        parser._control_kwargs leaves a {ref} out of the constructor kwargs so
+        that _build_config can bind it as a port instead.
         """
         raw = self.get_input("success_threshold", self._raw_success_threshold)
         try:
@@ -256,9 +257,18 @@ class ParallelNode(ControlNode):
         # it ParallelNode("p", children=[...]) — and a bare <Parallel> in XML —
         # were rejected at set_tree() even though -1 ("all children") is the
         # documented default.
-        # failure_threshold is deliberately NOT declared: validate_node() rejects
-        # a mapping to an undeclared port, so declaring it is the only way to
-        # make failure_threshold="{...}" legal — see the report.
-        return [InputPort("success_threshold",
-                          "Min successes for overall SUCCESS (<=0 = all children)",
-                          default=-1)]
+        # failure_threshold must be declared for the same reason, plus one more:
+        # validate_node() rejects a mapping to an undeclared port, so leaving it
+        # out made failure_threshold="{key}" a validation error even though the
+        # parser binds it and _failure_from_port() reads it every tick.
+        # The declared defaults mirror the constructor's; get_input() resolves
+        # against the fallback passed at the call site, so declaring them here
+        # changes validation only, never the value a tick sees.
+        return [
+            InputPort("success_threshold",
+                      "Min successes for overall SUCCESS (<=0 = all children)",
+                      default=-1),
+            InputPort("failure_threshold",
+                      "Min failures for overall FAILURE (clamped to >=1)",
+                      default=1),
+        ]
